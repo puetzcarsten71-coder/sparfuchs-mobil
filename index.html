@@ -1,905 +1,112 @@
-
-<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#174d39">
-<link rel="manifest" href="manifest.webmanifest">
-<title>Sparfuchs Mobil 1.1</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;background:#f2f5f4;color:#173a2b;font:16px system-ui,Arial}
-header{background:#174d39;color:white;padding:20px 18px}
-header h1{margin:0;font-size:25px}
-header small{opacity:.85}
-main{max-width:740px;margin:auto;padding:15px 15px 100px}
-.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.card,.panel{background:white;border-radius:15px;padding:16px;box-shadow:0 2px 9px #0001}
-.card b{display:block;font-size:22px;margin-top:7px}
-.panel{margin:15px 0}
-h2{font-size:20px}
-label{display:block;margin:12px 0 5px;font-weight:650}
-input,select,textarea{width:100%;padding:12px;border:1px solid #cbd8d1;border-radius:9px;font:inherit;background:white;color:#173a2b}
-textarea{resize:vertical}
-button{border:0;border-radius:10px;padding:12px 15px;font:inherit;font-weight:600;background:#207452;color:white;cursor:pointer}
-button.secondary{background:#e5efea;color:#174d39}
-button.danger{background:#a93c3c}
-button:disabled{opacity:.5}
-button.small{font-size:12px;padding:7px 9px}
-summary{cursor:pointer;font-weight:650;margin:10px 0}
-.notice{background:#fff4d6;border-radius:10px;padding:10px;margin-top:10px}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.actions button{flex:1}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.item{padding:12px 0;border-bottom:1px solid #e5ece8}
-.item:last-child{border:0}
-.muted{color:#667b70;font-size:13px}
-.hidden{display:none!important}
-nav{position:fixed;bottom:0;background:white;box-shadow:0 -2px 15px #0002;width:100%;display:flex;justify-content:space-around;padding:10px 5px max(10px,env(safe-area-inset-bottom))}
-nav button{background:none;color:#174d39;font-size:13px;padding:8px}
-#preview{width:100%;max-height:320px;object-fit:contain;margin-top:10px;border-radius:8px}
-.pill{background:#e6f2ec;border-radius:8px;padding:9px;margin:9px 0}
-#message{color:#17623e;min-height:1.3em}
-</style>
-</head>
-<body>
-
-<header>
-<h1>🦊 Sparfuchs Mobil</h1>
-<small>Version 1.1 · Verbesserter Bon-Scanner · Lokale Daten</small>
-</header>
-
-<main>
-
-<section id="home">
-<h2>Mein Finanzcockpit</h2>
-<div class="cards">
-<div class="card">Ausgaben gesamt<b id="total">0,00 €</b></div>
-<div class="card">Bons<b id="count">0</b></div>
-<div class="card">Lebensmittel<b id="food">0,00 €</b></div>
-<div class="card">Pfand<b id="deposit">0,00 €</b></div>
-</div>
-<div class="panel">
-<h2>Letzte Einkäufe</h2>
-<div id="recent"></div>
-</div>
-<div class="panel">
-<h2>Ausgaben nach Kategorie</h2>
-<div id="categoryStats"></div>
-</div>
-<div class="panel muted">
-Diese Test-App speichert Daten lokal in deinem Browser.
-Eine Verbindung zur Sparfuchs-Excel-Datei auf Google Drive
-besteht noch nicht.
-</div>
-</section>
-
-<section id="capture" class="hidden">
-<h2>📷 Bon erfassen</h2>
-<div class="panel">
-
-<label for="photo">Bon fotografieren oder Foto auswählen</label>
-<input id="photo" type="file" accept="image/*" capture="environment">
-<img id="preview" class="hidden" alt="Bonvorschau">
-
-<p class="muted">
-Fotografiere den gesamten Bon möglichst gerade, scharf und bei
-gleichmäßiger Beleuchtung. Das Foto wird nicht dauerhaft gespeichert.
-</p>
-
-<div class="actions">
-<button type="button" id="scanOCR">🔎 Bontext erkennen</button>
-</div>
-
-<p id="ocrStatus" class="muted" role="status">
-Beim ersten Scan werden OCR-Bibliothek und Sprachdaten
-aus dem Internet geladen.
-</p>
-
-<details id="ocrDetails">
-<summary>Erkannten Bontext ansehen und korrigieren</summary>
-<textarea id="ocrText" rows="9" placeholder="Hier erscheint der erkannte Bontext"></textarea>
-<div class="actions">
-<button type="button" id="parseOCR" class="secondary">
-Artikelvorschläge aus Text übernehmen
-</button>
-</div>
-</details>
-
-<label for="shop">Geschäft</label>
-<input id="shop" placeholder="z. B. Edeka">
-
-<label for="date">Einkaufsdatum</label>
-<input id="date" type="date">
-
-<h3>Artikel</h3>
-<div id="draftItems"></div>
-
-<label for="product">Artikelname</label>
-<input id="product" placeholder="z. B. Kaffee 1 kg">
-
-<div class="row">
-<div>
-<label for="qty">Menge</label>
-<input id="qty" type="number" min="0.001" step="any" value="1">
-</div>
-<div>
-<label for="unit">Einheit</label>
-<select id="unit">
-<option>Stück</option>
-<option>kg</option>
-<option>g</option>
-<option>Liter</option>
-<option>Packung</option>
-</select>
-</div>
-</div>
-
-<div class="row">
-<div>
-<label for="price">Einzelpreis €</label>
-<input id="price" type="number" min="0" step="0.01" placeholder="0,00">
-</div>
-<div>
-<label for="category">Kategorie</label>
-<select id="category">
-<option>Lebensmittel</option>
-<option>Pfand</option>
-<option>Haushalt</option>
-<option>Kraftstoff</option>
-<option>Mobilität</option>
-<option>Sonstiges</option>
-</select>
-</div>
-</div>
-
-<div class="actions">
-<button type="button" id="addItem">+ Artikel hinzufügen</button>
-</div>
-
-<div class="pill">
-Bonsumme: <strong id="draftTotal">0,00 €</strong>
-</div>
-
-<label for="receiptTotal">Kontrollsumme laut Bon € (optional)</label>
-<input id="receiptTotal" type="number" min="0" step="0.01">
-<p id="comparison" class="muted"></p>
-
-<div class="actions">
-<button type="button" id="saveReceipt">💾 Bon speichern</button>
-<button type="button" class="secondary" id="resetDraft">Zurücksetzen</button>
-</div>
-
-<p id="message" role="status"></p>
-</div>
-</section>
-
-<section id="history" class="hidden">
-<h2>🧾 Meine Bons</h2>
-<div class="panel"><div id="receiptList"></div></div>
-</section>
-
-<section id="settings" class="hidden">
-<h2>⚙️ Daten & Sicherung</h2>
-<div class="panel">
-<p class="notice">
-Noch keine Google-Drive-Synchronisierung.
-Bitte sichere deine Daten regelmäßig als JSON-Datei.
-</p>
-<div class="actions">
-<button type="button" id="exportJson">JSON-Sicherung</button>
-<button type="button" id="exportCsv">CSV für Excel</button>
-</div>
-<label for="importJson">JSON-Sicherung wiederherstellen</label>
-<input id="importJson" type="file" accept="application/json,.json">
-<p class="muted">
-Bereits vorhandene Bons mit derselben ID werden beim Import übersprungen.
-Bonfotos sind nicht Teil der Sicherung.
-</p>
-</div>
-</section>
-
-</main>
-
-<nav>
-<button data-page="home">🏠<br>Start</button>
-<button data-page="capture">📷<br>Scannen</button>
-<button data-page="history">🧾<br>Bons</button>
-<button data-page="settings">⚙️<br>Daten</button>
-</nav>
-
-<script>
-"use strict";
-
-// Derselbe Speicherschlüssel wie in Version 1.0.
-const KEY = "sparfuchs_mobile_receipts_v05";
-const $ = id => document.getElementById(id);
-
-const money = n => Number(n).toLocaleString("de-DE", {
-  style: "currency",
-  currency: "EUR"
-});
-
-const uid = () =>
-  crypto.randomUUID
-    ? crypto.randomUUID()
-    : Date.now() + "-" + Math.random().toString(36).slice(2);
-
-const categories = [
-  "Lebensmittel", "Pfand", "Haushalt",
-  "Kraftstoff", "Mobilität", "Sonstiges"
-];
-
-let receipts = [];
-let draft = [];
-let photoURL = null;
-let ocrBusy = false;
-
-try {
-  const stored = JSON.parse(localStorage.getItem(KEY) || "[]");
-  if (Array.isArray(stored)) receipts = stored;
-} catch (error) {
-  alert("Lokale Daten konnten nicht gelesen werden. Bitte zuerst prüfen.");
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#174d39"><link rel="manifest" href="manifest.webmanifest"><title>Sparfuchs Mobil</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f2f5f4;color:#173a2b;font:16px system-ui,Arial}header{background:#174d39;color:white;padding:20px 18px}header h1{margin:0;font-size:25px}header small{opacity:.8}main{max-width:740px;margin:auto;padding:15px 15px 90px}.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card,.panel{background:white;border-radius:15px;padding:16px;box-shadow:0 2px 9px #0001}.card b{display:block;font-size:22px;margin-top:7px}.panel{margin:15px 0}h2{font-size:20px}label{display:block;margin:12px 0 5px;font-weight:650}input,select,textarea{background:#fff;color:#173a2b;color-scheme:light;width:100%;padding:12px;border:1px solid #cbd8d1;border-radius:9px;font:inherit}button{border:0;border-radius:10px;padding:12px 15px;font:inherit;font-weight:600;background:#207452;color:white;cursor:pointer}button.secondary{background:#e5efea;color:#174d39}button.danger{background:#a93c3c}button:disabled{opacity:.5}summary{cursor:pointer;font-weight:650;margin:10px 0}textarea{padding:12px;border:1px solid #cbd8d1;border-radius:9px;font:inherit;resize:vertical}.notice{background:#fff4d6;border-radius:10px;padding:10px;margin-top:10px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{flex:1}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.item{padding:12px 0;border-bottom:1px solid #e5ece8}.item:last-child{border:0}.muted{color:#667b70;font-size:13px}.hidden{display:none!important}nav{position:fixed;bottom:0;background:#fff;box-shadow:0 -2px 15px #0002;width:100%;display:flex;justify-content:space-around;padding:10px 5px max(10px,env(safe-area-inset-bottom))}nav button{background:none;color:#174d39;font-size:13px;padding:8px}#preview{width:100%;max-height:320px;object-fit:contain;margin-top:10px;border-radius:8px}.pill{background:#e6f2ec;border-radius:8px;padding:9px;margin:9px 0}button.small{font-size:12px;padding:7px 9px}#message{color:#17623e;min-height:1.3em}
+</style></head><body><header><h1>🦊 Sparfuchs Mobil</h1><small>Android-Testversion 1.2 · lokale Daten</small></header><main><section id="home"><h2>Mein Finanzcockpit</h2><div class="cards"><div class="card">Ausgaben gesamt<b id="total">0,00 €</b></div><div class="card">Bons<b id="count">0</b></div><div class="card">Lebensmittel<b id="food">0,00 €</b></div><div class="card">Pfand<b id="deposit">0,00 €</b></div></div><div class="panel"><h2>Letzte Einkäufe</h2><div id="recent"></div></div><div class="panel"><h2>Ausgaben nach Kategorie</h2><div id="categoryStats"></div></div><div class="panel muted">Dies ist eine unabhängige Test-App. Noch keine Verbindung zu deiner Excel-Datei auf Google Drive. Daten bleiben auf diesem Gerät und in diesem Browser.</div></section>
+<section id="capture" class="hidden"><h2>📷 Bon erfassen</h2><div class="panel"><label for="photo">Bon fotografieren oder Foto auswählen</label><input id="photo" type="file" accept="image/*" capture="environment"><img id="preview" class="hidden" alt="Bonvorschau"><p class="muted">Die Fotoaufnahme funktioniert auf unterstützten Android-Browsern. Tippe auf „Text erkennen“, um den Bon auszulesen. Prüfe jeden erkannten Artikel und Preis. Das Foto wird nicht dauerhaft gespeichert. Für beste Ergebnisse den Bon gerade, vollständig und bei gutem Licht fotografieren.</p><div class="actions"><button type="button" id="scanOCR">🔎 Text erkennen (online)</button></div><p id="ocrStatus" class="muted" role="status">OCR lädt beim ersten Mal eine kostenlose Texterkennung aus dem Internet.</p><details><summary>Erkannter Bontext (kontrollierbar)</summary><textarea id="ocrText" rows="7" placeholder="Hier erscheint der erkannte Text"></textarea><div class="actions"><button type="button" id="parseOCR" class="secondary">Artikel mit Mengen und Preisen übernehmen</button></div></details><label for="shop">Geschäft</label><input id="shop" placeholder="z. B. Edeka"><label for="date">Einkaufsdatum</label><input id="date" type="date"><h3>Artikel</h3><div id="draftItems"></div><label for="product">Artikelname</label><input id="product" placeholder="z. B. Kaffee 1 kg"><div class="row"><div><label for="qty">Menge</label><input id="qty" type="number" min="0.001" step="any" value="1"></div><div><label for="unit">Einheit</label><select id="unit"><option>Stück</option><option>kg</option><option>g</option><option>Liter</option><option>Packung</option></select></div></div><div class="row"><div><label for="price">Einzelpreis €</label><input id="price" type="number" min="0" step="0.01" placeholder="0,00"></div><div><label for="category">Kategorie</label><select id="category"><option>Lebensmittel</option><option>Pfand</option><option>Haushalt</option><option>Kraftstoff</option><option>Mobilität</option><option>Sonstiges</option></select></div></div><div class="actions"><button id="addItem">+ Artikel hinzufügen</button></div><div class="pill">Bonsumme: <strong id="draftTotal">0,00 €</strong></div><label for="receiptTotal">Kontrollsumme laut Bon € (optional)</label><input id="receiptTotal" type="number" min="0" step="0.01"><p id="comparison" class="muted"></p><div class="actions"><button id="saveReceipt">💾 Bon speichern</button><button class="secondary" id="resetDraft">Zurücksetzen</button></div><p id="message" role="status"></p></div></section>
+<section id="history" class="hidden"><h2>🧾 Meine Bons</h2><div class="panel"><div id="receiptList"></div></div></section>
+<section id="settings" class="hidden"><h2>⚙️ Daten & Sicherung</h2><div class="panel"><p class="notice">Google-Drive-Synchronisierung ist noch nicht eingerichtet. Exportiere die CSV für die Excel-Entwicklungskopie und sichere die JSON-Datei regelmäßig.</p><p>Alle Daten liegen lokal auf deinem Gerät. Sichere sie regelmäßig, bevor du Browserdaten löschst oder das Gerät wechselst.</p><div class="actions"><button id="exportJson">JSON-Sicherung</button><button id="exportCsv">CSV für Excel</button></div><label for="importJson">JSON-Sicherung wiederherstellen</label><input id="importJson" type="file" accept="application/json,.json"><p class="muted">Beim Import werden bestehende Bons mit gleicher ID übersprungen. Das Foto wird nicht exportiert.</p></div></section></main><nav><button data-page="home">🏠<br>Start</button><button data-page="capture">📷<br>Scannen</button><button data-page="history">🧾<br>Bons</button><button data-page="settings">⚙️<br>Daten</button></nav><script>
+'use strict';const KEY='sparfuchs_mobile_receipts_v05';const $=id=>document.getElementById(id);const money=n=>Number(n).toLocaleString('de-DE',{style:'currency',currency:'EUR'});const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2);let receipts=[];let draft=[];let photoURL=null;
+try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(v))receipts=v}catch(e){alert('Lokale Daten konnten nicht gelesen werden. Bitte vor weiteren Änderungen prüfen.')}function save(){try{localStorage.setItem(KEY,JSON.stringify(receipts));return true}catch(e){alert('Speichern fehlgeschlagen. Bitte Speicherplatz prüfen.');return false}}function show(page){['home','capture','history','settings'].forEach(id=>$(id).classList.toggle('hidden',id!==page));render();window.scrollTo(0,0)}document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>show(b.dataset.page));function sum(items){return items.reduce((a,i)=>a+Math.round(i.qty*i.price*100),0)/100}function node(tag,text,cls){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el}function render(){const items=receipts.flatMap(r=>r.items);const byCat={};items.forEach(i=>byCat[i.category]=(byCat[i.category]||0)+Math.round(i.qty*i.price*100)/100);const stats=$('categoryStats');stats.replaceChildren();Object.entries(byCat).sort((a,b)=>b[1]-a[1]).forEach(([cat,amount])=>{const el=node('div',undefined,'item');el.append(node('span',cat+' · '+money(amount)));const bar=node('div');bar.style.cssText='height:8px;border-radius:8px;background:#cbe6d8;margin-top:6px;overflow:hidden';const fill=node('div');fill.style.cssText='height:100%;background:#207452;width:'+Math.min(100,amount/Math.max(0.01,sum(items))*100)+'%';bar.append(fill);el.append(bar);stats.append(el)});if(!items.length)stats.textContent='Noch keine Daten.';$('total').textContent=money(sum(items));$('count').textContent=receipts.length;$('food').textContent=money(sum(items.filter(i=>i.category==='Lebensmittel')));$('deposit').textContent=money(sum(items.filter(i=>i.category==='Pfand')));const recent=$('recent');recent.replaceChildren();receipts.slice(-4).reverse().forEach(r=>{const el=node('div',`${r.date} · ${r.shop} · ${money(sum(r.items))}`,'item');recent.append(el)});if(!receipts.length)recent.textContent='Noch keine Bons erfasst.';const list=$('receiptList');list.replaceChildren();receipts.slice().reverse().forEach(r=>{const wrap=node('div',undefined,'item');wrap.append(node('strong',`${r.shop} · ${money(sum(r.items))}`),node('div',r.date,'muted'));r.items.forEach(i=>wrap.append(node('div',`${i.name} · ${i.qty} ${i.unit} × ${money(i.price)} = ${money(Math.round(i.qty*i.price*100)/100)}`,'muted')));const btn=node('button','Löschen','danger small');btn.onclick=()=>{if(confirm('Diesen Bon endgültig löschen?')){const before=receipts;receipts=receipts.filter(x=>x.id!==r.id);if(!save())receipts=before;render()}};wrap.append(btn);list.append(wrap)});if(!receipts.length)list.textContent='Noch keine Bons gespeichert.';renderDraft()}
+function renderDraft(){const box=$('draftItems');box.replaceChildren();draft.forEach((i,k)=>{const row=node('div',undefined,'item');row.append(node('span',`${i.name} · ${i.qty} ${i.unit} × ${money(i.price)} = ${money(Math.round(i.qty*i.price*100)/100)} (${i.category})`));const b=node('button','Entfernen','secondary small');b.onclick=()=>{draft.splice(k,1);renderDraft()};const edit=node('button','Bearbeiten','secondary small');edit.onclick=()=>{const name=prompt('Artikelname',i.name);if(name===null)return;const quantity=prompt('Menge',String(i.qty));if(quantity===null)return;const price=prompt('Einzelpreis in Euro',String(i.price));if(price===null)return;const q=Number(quantity.replace(',','.')),pr=Number(price.replace(',','.'));if(!name.trim()||!Number.isFinite(q)||q<=0||!Number.isFinite(pr)||pr<0){alert('Ungültige Werte');return}draft[k]={...i,name:name.trim(),qty:q,price:Math.round(pr*100)/100};renderDraft()};row.append(' ',edit,' ',b);box.append(row)});$('draftTotal').textContent=money(sum(draft));const c=$('receiptTotal').value;if(c!==''){$('comparison').textContent=Math.abs(Number(c)-sum(draft))<0.005?'✓ Summe stimmt mit dem Bon überein.':`Differenz zum Bon: ${money(Math.round((sum(draft)-Number(c))*100)/100)}`}else $('comparison').textContent=''}$('receiptTotal').oninput=renderDraft;
+$('addItem').onclick=()=>{const name=$('product').value.trim(),qty=Number($('qty').value),price=Number($('price').value);if(!name||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<0){alert('Bitte Artikel, positive Menge und gültigen Preis eingeben.');return}draft.push({id:uid(),name,qty,price:Math.round(price*100)/100,unit:$('unit').value,category:$('category').value});$('product').value='';$('qty').value='1';$('price').value='';renderDraft();$('product').focus()};function reset(){draft=[];$('shop').value='';$('date').value=new Date().toLocaleDateString('en-CA');$('receiptTotal').value='';$('product').value='';$('price').value='';$('photo').value='';$('ocrText').value='';$('ocrStatus').textContent='OCR lädt beim ersten Mal eine kostenlose Texterkennung aus dem Internet.';$('preview').classList.add('hidden');if(photoURL)URL.revokeObjectURL(photoURL);photoURL=null;$('message').textContent='';renderDraft()}$('resetDraft').onclick=()=>{if(confirm('Aktuellen Entwurf verwerfen?'))reset()};$('saveReceipt').onclick=()=>{const shop=$('shop').value.trim(),date=$('date').value;if(!shop||!date||!draft.length){alert('Bitte Geschäft, Datum und mindestens einen Artikel eintragen.');return}if($('receiptTotal').value!==''&&Math.abs(Number($('receiptTotal').value)-sum(draft))>=0.005&&!confirm('Die Bonsumme weicht ab. Trotzdem speichern?'))return;const r={id:uid(),shop,date,items:draft.map(i=>({...i})),createdAt:new Date().toISOString()};receipts.push(r);if(!save()){receipts.pop();return}reset();show('history')};$('photo').onchange=e=>{const file=e.target.files[0];if(!file)return;if(!file.type.startsWith('image/')){alert('Bitte ein Foto auswählen.');return}if(photoURL)URL.revokeObjectURL(photoURL);photoURL=URL.createObjectURL(file);$('preview').src=photoURL;$('preview').classList.remove('hidden');$('ocrText').value='';$('ocrStatus').textContent='Foto bereit. Tippe auf „Text erkennen“.'};function download(filename,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}$('exportJson').onclick=()=>download('sparfuchs-sicherung.json',JSON.stringify(receipts,null,2),'application/json');$('exportCsv').onclick=()=>{const rows=[['Bon-ID','Datum','Geschäft','Artikel','Kategorie','Menge','Einheit','Einzelpreis EUR','Gesamtpreis EUR']];receipts.forEach(r=>r.items.forEach(i=>rows.push([r.id,r.date,r.shop,i.name,i.category,String(i.qty).replace('.',','),i.unit,String(i.price).replace('.',','),String(Math.round(i.qty*i.price*100)/100).replace('.',',')])));const esc=v=>'"'+String(v).replace(/"/g,'""')+'"';download('sparfuchs-bonpositionen.csv','\ufeff'+rows.map(r=>r.map(esc).join(';')).join('\r\n'),'text/csv;charset=utf-8')};$('importJson').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const incoming=JSON.parse(await file.text());if(!Array.isArray(incoming)||!incoming.every(r=>r&&typeof r.id==='string'&&typeof r.shop==='string'&&typeof r.date==='string'&&Array.isArray(r.items)&&r.items.every(i=>typeof i.name==='string'&&Number.isFinite(i.qty)&&Number.isFinite(i.price)&&typeof i.category==='string'))){throw Error('Ungültige Sicherungsdatei')}const ids=new Set(receipts.map(r=>r.id));const added=incoming.filter(r=>!ids.has(r.id));const before=receipts;receipts=[...receipts,...added];if(!save())receipts=before;else alert(`${added.length} Bons importiert.`);render()}catch(err){alert('Import nicht möglich: '+err.message)}e.target.value=''};
+// OCR ist optional: Beim ersten Aufruf werden Bibliothek und Sprachdaten über HTTPS geladen.
+let ocrBusy=false;
+function loadOCR(){return new Promise((resolve,reject)=>{if(window.Tesseract){resolve();return}const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';script.onload=resolve;script.onerror=()=>reject(Error('OCR-Bibliothek konnte nicht geladen werden. Internet prüfen.'));document.head.append(script)})}
+// Auflösung, Kontrast und Hintergrund für Thermopapier optimieren.
+async function prepareImage(file,mode){
+ const bitmap=await createImageBitmap(file,{imageOrientation:'from-image'});
+ try{
+  const factor=Math.min(3,Math.max(1,1800/Math.max(bitmap.width,bitmap.height)));
+  const maxPixels=3500000;
+  const scaled=Math.min(factor,Math.sqrt(maxPixels/(bitmap.width*bitmap.height)));
+  const canvas=document.createElement('canvas');canvas.width=Math.round(bitmap.width*scaled);canvas.height=Math.round(bitmap.height*scaled);
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+  if(mode==='original')return canvas;
+  const image=ctx.getImageData(0,0,canvas.width,canvas.height),data=image.data;
+  const histogram=new Uint32Array(256);let count=0;
+  for(let i=0;i<data.length;i+=4){const v=Math.round(.299*data[i]+.587*data[i+1]+.114*data[i+2]);histogram[v]++;count++}
+  let low=0,high=255,n=0;for(let k=0;k<256;k++){n+=histogram[k];if(n>=count*.02){low=k;break}}
+  n=0;for(let k=255;k>=0;k--){n+=histogram[k];if(n>=count*.02){high=k;break}}
+  const span=Math.max(35,high-low);
+  for(let i=0;i<data.length;i+=4){const gray=.299*data[i]+.587*data[i+1]+.114*data[i+2];let v=Math.max(0,Math.min(255,Math.round((gray-low)*255/span)));if(mode==='threshold')v=v>160?255:0;data[i]=data[i+1]=data[i+2]=v}
+  ctx.putImageData(image,0,0);return canvas;
+ }finally{bitmap.close()}
 }
-
-function save() {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(receipts));
-    return true;
-  } catch (error) {
-    alert("Speichern fehlgeschlagen. Bitte Speicherplatz prüfen.");
-    return false;
+function ocrQuality(result){const t=(result.data.text||'');const lines=t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const sensible=lines.filter(x=>/[A-Za-zÄÖÜäöüß]{3,}/.test(x)&&!/[|{}<>]{3,}/.test(x));const priced=lines.filter(x=>/\d{1,4}[,.]\d{2}/.test(x));return {score:sensible.length*2+priced.length*5+Math.max(0,Number(result.data.confidence)||0)/10,priced:priced.length,confidence:Number(result.data.confidence)||0}}
+$('scanOCR').onclick=async()=>{
+ const file=$('photo').files[0];if(!file){alert('Bitte zuerst ein Bonfoto auswählen.');return}if(ocrBusy)return;
+ ocrBusy=true;$('scanOCR').disabled=true;let worker;
+ try{
+  $('ocrStatus').textContent='Lade Texterkennung …';await loadOCR();
+  worker=await Tesseract.createWorker('deu+eng',1,{logger:m=>{if(m.status==='recognizing text')$('ocrStatus').textContent='Erkenne Text: '+Math.round((m.progress||0)*100)+' %'}});
+  await worker.setParameters({preserve_interword_spaces:'1'});
+  let best=null,bestQ=null;
+  for(const mode of ['contrast','original']){
+   $('ocrStatus').textContent=mode==='contrast'?'Optimiere Bonfoto und erkenne Text …':'Prüfe alternative Erkennung …';
+   let canvas;try{canvas=await prepareImage(file,mode)}catch(err){if(mode==='contrast')throw err;continue}
+   const result=await worker.recognize(canvas);const q=ocrQuality(result);
+   if(!best||q.score>bestQ.score){best=result;bestQ=q}
+   if(q.priced>=3&&q.confidence>=75)break;
   }
-}
-
-function node(tag, text, className) {
-  const el = document.createElement(tag);
-  if (text !== undefined) el.textContent = text;
-  if (className) el.className = className;
-  return el;
-}
-
-function sum(items) {
-  return items.reduce(
-    (total, item) => total + Math.round(item.qty * item.price * 100),
-    0
-  ) / 100;
-}
-
-function show(page) {
-  ["home", "capture", "history", "settings"].forEach(id => {
-    $(id).classList.toggle("hidden", id !== page);
-  });
-  render();
-  window.scrollTo(0, 0);
-}
-
-document.querySelectorAll("[data-page]").forEach(button => {
-  button.onclick = () => show(button.dataset.page);
-});
-
-function render() {
-  const items = receipts.flatMap(r => r.items);
-  const byCat = {};
-
-  items.forEach(item => {
-    byCat[item.category] =
-      (byCat[item.category] || 0) +
-      Math.round(item.qty * item.price * 100) / 100;
-  });
-
-  const stats = $("categoryStats");
-  stats.replaceChildren();
-
-  Object.entries(byCat)
-    .sort((a, b) => b[1] - a[1])
-    .forEach(([category, amount]) => {
-      const el = node("div", undefined, "item");
-      el.append(node("span", category + " · " + money(amount)));
-
-      const bar = node("div");
-      bar.style.cssText =
-        "height:8px;border-radius:8px;background:#cbe6d8;" +
-        "margin-top:6px;overflow:hidden";
-
-      const fill = node("div");
-      const percent = Math.min(
-        100,
-        amount / Math.max(0.01, sum(items)) * 100
-      );
-      fill.style.cssText =
-        "height:100%;background:#207452;width:" + percent + "%";
-
-      bar.append(fill);
-      el.append(bar);
-      stats.append(el);
-    });
-
-  if (!items.length) stats.textContent = "Noch keine Daten.";
-
-  $("total").textContent = money(sum(items));
-  $("count").textContent = receipts.length;
-  $("food").textContent = money(
-    sum(items.filter(i => i.category === "Lebensmittel"))
-  );
-  $("deposit").textContent = money(
-    sum(items.filter(i => i.category === "Pfand"))
-  );
-
-  const recent = $("recent");
-  recent.replaceChildren();
-
-  receipts.slice(-4).reverse().forEach(r => {
-    recent.append(node(
-      "div",
-      r.date + " · " + r.shop + " · " + money(sum(r.items)),
-      "item"
-    ));
-  });
-
-  if (!receipts.length) recent.textContent = "Noch keine Bons erfasst.";
-
-  const list = $("receiptList");
-  list.replaceChildren();
-
-  receipts.slice().reverse().forEach(r => {
-    const wrap = node("div", undefined, "item");
-    wrap.append(
-      node("strong", r.shop + " · " + money(sum(r.items))),
-      node("div", r.date, "muted")
-    );
-
-    r.items.forEach(i => {
-      wrap.append(node(
-        "div",
-        i.name + " · " + i.qty + " " + i.unit +
-        " × " + money(i.price) +
-        " = " + money(Math.round(i.qty * i.price * 100) / 100),
-        "muted"
-      ));
-    });
-
-    const del = node("button", "Löschen", "danger small");
-    del.onclick = () => {
-      if (!confirm("Diesen Bon endgültig löschen?")) return;
-      const before = receipts;
-      receipts = receipts.filter(x => x.id !== r.id);
-      if (!save()) receipts = before;
-      render();
-    };
-    wrap.append(del);
-    list.append(wrap);
-  });
-
-  if (!receipts.length) list.textContent = "Noch keine Bons gespeichert.";
-
-  renderDraft();
-}
-
-function renderDraft() {
-  const box = $("draftItems");
-  box.replaceChildren();
-
-  draft.forEach((item, index) => {
-    const row = node("div", undefined, "item");
-    row.append(node(
-      "span",
-      item.name + " · " + item.qty + " " + item.unit +
-      " × " + money(item.price) +
-      " = " + money(Math.round(item.qty * item.price * 100) / 100) +
-      " (" + item.category + ")"
-    ));
-
-    const edit = node("button", "Bearbeiten", "secondary small");
-    edit.onclick = () => {
-      const name = prompt("Artikelname", item.name);
-      if (name === null) return;
-
-      const quantity = prompt("Menge", String(item.qty));
-      if (quantity === null) return;
-
-      const price = prompt("Einzelpreis in Euro", String(item.price));
-      if (price === null) return;
-
-      const q = Number(quantity.replace(",", "."));
-      const p = Number(price.replace(",", "."));
-
-      if (!name.trim() || !Number.isFinite(q) || q <= 0 ||
-          !Number.isFinite(p) || p < 0) {
-        alert("Ungültige Werte.");
-        return;
-      }
-
-      draft[index] = {
-        ...item,
-        name: name.trim(),
-        qty: q,
-        price: Math.round(p * 100) / 100
-      };
-      renderDraft();
-    };
-
-    const del = node("button", "Entfernen", "secondary small");
-    del.onclick = () => {
-      draft.splice(index, 1);
-      renderDraft();
-    };
-
-    row.append(" ", edit, " ", del);
-    box.append(row);
-  });
-
-  $("draftTotal").textContent = money(sum(draft));
-
-  const control = $("receiptTotal").value;
-  if (control === "") {
-    $("comparison").textContent = "";
-  } else {
-    const difference = Math.round(
-      (sum(draft) - Number(control)) * 100
-    ) / 100;
-
-    $("comparison").textContent =
-      Math.abs(difference) < 0.005
-        ? "✓ Summe stimmt mit dem Bon überein."
-        : "Differenz zum Bon: " + money(difference);
+  $('ocrText').value=best?.data.text||'';
+  if(!bestQ||bestQ.confidence<45||bestQ.priced===0){
+   $('ocrStatus').textContent='⚠️ Bon nicht zuverlässig erkannt (OCR '+Math.round(bestQ?.confidence||0)+' %). Bitte Foto erneut aufnehmen oder Text manuell korrigieren. Keine Artikel automatisch übernommen.';
+  }else{
+   $('ocrStatus').textContent='OCR '+Math.round(bestQ.confidence)+' % · '+bestQ.priced+' Zeilen mit Preisen erkannt. Text prüfen, dann Artikelvorschläge übernehmen.';
   }
-}
-
-$("receiptTotal").oninput = renderDraft;
-
-$("addItem").onclick = () => {
-  const name = $("product").value.trim();
-  const qty = Number($("qty").value);
-  const price = Number($("price").value);
-
-  if (!name || !Number.isFinite(qty) || qty <= 0 ||
-      !Number.isFinite(price) || price < 0) {
-    alert("Bitte Artikel, positive Menge und gültigen Preis eingeben.");
-    return;
-  }
-
-  draft.push({
-    id: uid(),
-    name,
-    qty,
-    price: Math.round(price * 100) / 100,
-    unit: $("unit").value,
-    category: $("category").value
-  });
-
-  $("product").value = "";
-  $("qty").value = "1";
-  $("price").value = "";
-  renderDraft();
-  $("product").focus();
+ }catch(e){$('ocrStatus').textContent='Texterkennung fehlgeschlagen: '+e.message+' (Bei Bedarf einen echten Bon testen.)'}
+ finally{if(worker)await worker.terminate();ocrBusy=false;$('scanOCR').disabled=false}
 };
-
-function reset() {
-  draft = [];
-  $("shop").value = "";
-  const today = new Date();
-  $("date").value =
-    today.getFullYear() + "-" +
-    String(today.getMonth() + 1).padStart(2, "0") + "-" +
-    String(today.getDate()).padStart(2, "0");
-
-  $("receiptTotal").value = "";
-  $("product").value = "";
-  $("price").value = "";
-  $("photo").value = "";
-  $("ocrText").value = "";
-  $("preview").classList.add("hidden");
-
-  if (photoURL) URL.revokeObjectURL(photoURL);
-  photoURL = null;
-
-  $("message").textContent = "";
-  renderDraft();
+function parseReceiptText(text){
+ const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+ const entries=[];let expected=null;let shop='';let date='';
+ const moneyToken=s=>Number(s.replace(/[€\s]/g,'').replace(',','.'));
+ const exclusion=/^(?:summe|gesamt|total|bar|ec[ -]?karte|visa|mastercard|rückgeld|mwst|ust|steuer|netto|brutto|betrag|gegeben|zahlung|zu zahlen|wechselgeld|bon[ -]?nr|datum|uhrzeit|kasse|transaktion|beleg|artikel|zwischensumme|kartenzahlung|tel\.|vielen dank|mehrwertsteuer)/i;
+ for(const line of lines){
+  if(!shop&&/\b(?:EDEKA|REWE|ALDI|LIDL|PENNY|KAUFLAND|NETTO|DM|ROSSMANN)\b/i.test(line))shop=(line.match(/\b(?:EDEKA|REWE|ALDI|LIDL|PENNY|KAUFLAND|NETTO|DM|ROSSMANN)\b/i)||[])[0].toUpperCase();
+  const dm=line.match(/\b(\d{2})\.(\d{2})\.(20\d{2})\b/);if(dm&&!date)date=dm[3]+'-'+dm[2]+'-'+dm[1];
+  const total=line.match(/\b(?:summe|gesamt|zu zahlen)\b[^\d]{0,18}(\d{1,5}[,.]\d{2})\s*€?/i);
+  if(total&&expected===null)expected=moneyToken(total[1]);
+  if(exclusion.test(line))continue;
+  // Nur Zeilen mit einem Betrag am Ende; mögliche Steuercodes ignorieren.
+  const ending=line.match(/^(.*?)\s+(\d{1,5}[,.]\d{2})\s*(?:€|EUR)?\s*(?:[ABCD*])?\s*$/i);
+  if(!ending)continue;
+  let left=ending[1].trim();const amount=moneyToken(ending[2]);
+  if(!/[a-zäöüß]{3}/i.test(left)||!Number.isFinite(amount)||amount<=0||amount>5000)continue;
+  let qty=1,price=amount,unit='Stück',name=left,uncertain=false;
+  // Gewogene Ware: 'Bananen lose 0,926 kg 1,99 €/kg 1,84 €'
+  const weighed=left.match(/^(.*?)\s+(\d+[,.]\d{1,3})\s*kg\s+(\d+[,.]\d{2})\s*€?\s*\/\s*kg\s*$/i);
+  if(weighed){name=weighed[1].trim();qty=moneyToken(weighed[2]);price=moneyToken(weighed[3]);unit='kg';uncertain=Math.abs(Math.round(qty*price*100)/100-amount)>.015;}
+  else {
+   // 'Vollmilch 1,5% 1l 2 1,19 € 2,38 €' oder 'Pfand 0,25 € 1 0,25 € 0,25 €'
+   const multi=left.match(/^(.*?)\s+(\d{1,3})\s+(\d{1,5}[,.]\d{2})\s*€?$/);
+   if(multi){name=multi[1].trim();qty=Number(multi[2]);price=moneyToken(multi[3]);uncertain=Math.abs(Math.round(qty*price*100)/100-amount)>.015;}
+   else {
+    const single=left.match(/^(.*?)\s+(\d{1,5}[,.]\d{2})\s*€?$/);
+    if(single){name=single[1].trim();price=moneyToken(single[2]);uncertain=Math.abs(price-amount)>.015;}
+   }
+  }
+  if(!name||name.length<3||qty<=0||price<0)continue;
+  // Steuersätze/Prozentwerte dürfen im Artikelnamen stehen.
+  const category=/pfand/i.test(name)?'Pfand':/diesel|super e5|super e10|benzin/i.test(name)?'Kraftstoff':'Lebensmittel';
+  entries.push({name,qty,unit,price:Math.round(price*100)/100,category,uncertain,printedTotal:amount});
+ }
+ return {entries,expected,shop,date};
 }
-
-$("resetDraft").onclick = () => {
-  if (confirm("Aktuellen Entwurf verwerfen?")) reset();
-};
-
-$("saveReceipt").onclick = () => {
-  const shop = $("shop").value.trim();
-  const date = $("date").value;
-
-  if (!shop || !date || !draft.length) {
-    alert("Bitte Geschäft, Datum und mindestens einen Artikel eintragen.");
-    return;
-  }
-
-  const control = $("receiptTotal").value;
-  if (control !== "" &&
-      Math.abs(Number(control) - sum(draft)) >= 0.005 &&
-      !confirm("Die Bonsumme weicht ab. Trotzdem speichern?")) {
-    return;
-  }
-
-  const receipt = {
-    id: uid(),
-    shop,
-    date,
-    items: draft.map(i => ({ ...i })),
-    createdAt: new Date().toISOString()
-  };
-
-  receipts.push(receipt);
-
-  if (!save()) {
-    receipts.pop();
-    return;
-  }
-
-  reset();
-  show("history");
-};
-
-$("photo").onchange = event => {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  if (!file.type.startsWith("image/")) {
-    alert("Bitte ein Foto auswählen.");
-    return;
-  }
-
-  if (photoURL) URL.revokeObjectURL(photoURL);
-  photoURL = URL.createObjectURL(file);
-
-  $("preview").src = photoURL;
-  $("preview").classList.remove("hidden");
-  $("ocrText").value = "";
-  $("ocrStatus").textContent = "Foto ausgewählt. Bereit zum Scannen.";
-};
-
-// ---------------------------------------------------
-// SPARFUCHS 1.1: VERBESSERTER BON-SCANNER
-// ---------------------------------------------------
-
-function loadOCR() {
-  return new Promise((resolve, reject) => {
-    if (window.Tesseract) {
-      resolve();
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src =
-      "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
-
-    script.onload = resolve;
-    script.onerror = () => reject(
-      Error("OCR-Bibliothek konnte nicht geladen werden. Internet prüfen.")
-    );
-    document.head.append(script);
-  });
+function parseOCR(){
+ const parsed=parseReceiptText($('ocrText').value);
+ if(!parsed.entries.length){$('ocrStatus').textContent='Keine geeigneten Artikelzeilen gefunden. Bitte Text korrigieren oder Artikel manuell erfassen.';return}
+ const uncertain=parsed.entries.filter(i=>i.uncertain).length;
+ const calculated=parsed.entries.reduce((s,i)=>s+i.printedTotal,0);
+ const note=parsed.expected===null?'Keine Bonsumme erkannt.':('Bon: '+money(parsed.expected)+' · erkannte Zeilen: '+money(calculated)+'.');
+ if(!confirm(parsed.entries.length+' Artikelvorschläge gefunden ('+uncertain+' rechnerisch unklar). '+note+'\n\nAls bearbeitbaren Entwurf übernehmen?'))return;
+ if(parsed.shop&&!$('shop').value)$('shop').value=parsed.shop;
+ if(parsed.date)$('date').value=parsed.date;
+ if(parsed.expected!==null)$('receiptTotal').value=parsed.expected.toFixed(2);
+ draft.push(...parsed.entries.map(i=>({id:uid(),name:i.name,qty:i.qty,unit:i.unit,price:i.price,category:i.category})));
+ renderDraft();$('ocrStatus').textContent=parsed.entries.length+' Artikel übernommen. '+(uncertain?'⚠️ '+uncertain+' Preis-/Mengenangaben prüfen. ':'')+'Bitte jeden Artikel und die Bonsumme prüfen.';
 }
+$('parseOCR').onclick=parseOCR;
 
-async function bonBildOptimieren(file) {
-  const bitmap = await createImageBitmap(file);
 
-  try {
-    const faktor = Math.min(
-      2.5,
-      2400 / Math.max(bitmap.width, bitmap.height)
-    );
-
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * faktor));
-    canvas.height = Math.max(1, Math.round(bitmap.height * faktor));
-
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-    const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const pixels = image.data;
-
-    for (let i = 0; i < pixels.length; i += 4) {
-      const gray =
-        0.299 * pixels[i] +
-        0.587 * pixels[i + 1] +
-        0.114 * pixels[i + 2];
-
-      const contrast = Math.max(
-        0,
-        Math.min(255, (gray - 128) * 1.5 + 128)
-      );
-
-      pixels[i] = contrast;
-      pixels[i + 1] = contrast;
-      pixels[i + 2] = contrast;
-    }
-
-    ctx.putImageData(image, 0, 0);
-    return canvas;
-  } finally {
-    bitmap.close();
-  }
-}
-
-function ocrQualitaet(result) {
-  const text = result.data.text || "";
-  const lines = text.split(/\r?\n/);
-  const plausible = lines.filter(line =>
-    /[a-zäöüß]{3,}/i.test(line) &&
-    /\d+[,.]\d{2}/.test(line)
-  ).length;
-
-  return {
-    text,
-    confidence: Number(result.data.confidence) || 0,
-    plausible,
-    score: plausible * 15 + (Number(result.data.confidence) || 0)
-  };
-}
-
-$("scanOCR").onclick = async () => {
-  const file = $("photo").files[0];
-
-  if (!file) {
-    alert("Bitte zuerst ein Bonfoto auswählen.");
-    return;
-  }
-
-  if (ocrBusy) return;
-
-  ocrBusy = true;
-  $("scanOCR").disabled = true;
-
-  let worker = null;
-
-  try {
-    $("ocrStatus").textContent = "Lade Texterkennung …";
-    await loadOCR();
-
-    worker = await Tesseract.createWorker("deu+eng", 1, {
-      logger: message => {
-        if (message.status === "recognizing text") {
-          $("ocrStatus").textContent =
-            "Erkenne Text: " +
-            Math.round((message.progress || 0) * 100) + " %";
-        }
-      }
-    });
-
-    $("ocrStatus").textContent = "Analysiere Originalbild …";
-    const original = ocrQualitaet(await worker.recognize(file));
-
-    $("ocrStatus").textContent = "Optimiere Bonfoto …";
-    const optimizedImage = await bonBildOptimieren(file);
-
-    $("ocrStatus").textContent = "Analysiere optimiertes Bild …";
-    const optimized = ocrQualitaet(
-      await worker.recognize(optimizedImage)
-    );
-
-    const best =
-      optimized.score > original.score ? optimized : original;
-
-    $("ocrText").value = best.text;
-    $("ocrDetails").open = true;
-
-    if (best.plausible === 0 || best.confidence < 35) {
-      $("ocrStatus").textContent =
-        "⚠️ Schlechte Texterkennung. Bitte Foto und Text prüfen. " +
-        "Es wurden keine Artikel automatisch übernommen.";
-      return;
-    }
-
-    $("ocrStatus").textContent =
-      "Texterkennung abgeschlossen. Qualität: " +
-      Math.round(best.confidence) + " %. " +
-      "Bitte Artikel und Preise kontrollieren.";
-
-    // Vorschläge werden bewusst NICHT automatisch gespeichert.
-    // Der Benutzer entscheidet, ob sie übernommen werden.
-  } catch (error) {
-    $("ocrStatus").textContent =
-      "Texterkennung fehlgeschlagen: " + error.message;
-  } finally {
-    if (worker) {
-      try {
-        await worker.terminate();
-      } catch (error) {
-        console.warn("OCR-Worker konnte nicht beendet werden.", error);
-      }
-    }
-
-    ocrBusy = false;
-    $("scanOCR").disabled = false;
-  }
-};
-
-function parseOCR() {
-  const text = $("ocrText").value;
-  const lines = text.split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(Boolean);
-
-  const proposals = [];
-
-  const exclusion =
-    /^(summe|gesamt|total|bar|ec[ -]?karte|visa|mastercard|rückgeld|mwst|ust|steuer|netto|brutto|betrag|gegeben|zahlung|zu zahlen|wechselgeld|bonnr|datum|uhrzeit|kasse|transaktion|beleg|artikel|zwischensumme|kartenzahlung)/i;
-
-  for (const line of lines) {
-    if (exclusion.test(line)) continue;
-
-    const match = line.match(
-      /^(.{3,}?)\s+(-?\d{1,4}[,.]\d{2})\s*(?:[ABCD*])?$/
-    );
-
-    if (!match) continue;
-
-    const name = match[1].replace(/\s{2,}/g, " ").trim();
-    const amount = Number(match[2].replace(",", "."));
-
-    if (!name || !/[a-zäöüß]{3,}/i.test(name) ||
-        !Number.isFinite(amount) || amount <= 0 || amount > 5000) {
-      continue;
-    }
-
-    const category = /pfand/i.test(name)
-      ? "Pfand"
-      : /diesel|super e5|super e10|benzin/i.test(name)
-        ? "Kraftstoff"
-        : "Lebensmittel";
-
-    proposals.push({
-      id: uid(),
-      name,
-      qty: 1,
-      unit: "Stück",
-      price: Math.round(amount * 100) / 100,
-      category
-    });
-  }
-
-  if (!proposals.length) {
-    $("ocrStatus").textContent =
-      "Keine geeigneten Artikelzeilen gefunden. " +
-      "Bitte Bontext korrigieren oder Artikel manuell erfassen.";
-    return;
-  }
-
-  const accepted = confirm(
-    proposals.length + " mögliche Artikel gefunden.\n\n" +
-    "Als Entwurf übernehmen?\n\n" +
-    "ACHTUNG: Alle Namen, Mengen und Preise müssen geprüft werden. " +
-    "Bestehende Entwurfsartikel bleiben erhalten."
-  );
-
-  if (!accepted) return;
-
-  draft.push(...proposals);
-  renderDraft();
-
-  $("ocrStatus").textContent =
-    proposals.length + " Artikelvorschläge übernommen. " +
-    "Bitte alle Angaben und die Bonsumme kontrollieren.";
-}
-
-$("parseOCR").onclick = parseOCR;
-
-// ---------------------------------------------------
-// DATENSICHERUNG
-// ---------------------------------------------------
-
-function download(filename, content, type) {
-  const url = URL.createObjectURL(new Blob([content], { type }));
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-$("exportJson").onclick = () => {
-  download(
-    "sparfuchs-sicherung.json",
-    JSON.stringify(receipts, null, 2),
-    "application/json"
-  );
-};
-
-$("exportCsv").onclick = () => {
-  const rows = [[
-    "Bon-ID", "Datum", "Geschäft", "Artikel", "Kategorie",
-    "Menge", "Einheit", "Einzelpreis EUR", "Gesamtpreis EUR"
-  ]];
-
-  receipts.forEach(r => r.items.forEach(i => {
-    rows.push([
-      r.id,
-      r.date,
-      r.shop,
-      i.name,
-      i.category,
-      String(i.qty).replace(".", ","),
-      i.unit,
-      String(i.price).replace(".", ","),
-      String(Math.round(i.qty * i.price * 100) / 100)
-        .replace(".", ",")
-    ]);
-  }));
-
-  const escapeCsv = value =>
-    '"' + String(value).replace(/"/g, '""') + '"';
-
-  download(
-    "sparfuchs-bonpositionen.csv",
-    "\ufeff" +
-      rows.map(row => row.map(escapeCsv).join(";")).join("\r\n"),
-    "text/csv;charset=utf-8"
-  );
-};
-
-$("importJson").onchange = async event => {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  try {
-    const incoming = JSON.parse(await file.text());
-
-    if (!Array.isArray(incoming) || !incoming.every(r =>
-      r &&
-      typeof r.id === "string" &&
-      typeof r.shop === "string" &&
-      typeof r.date === "string" &&
-      Array.isArray(r.items) &&
-      r.items.every(i =>
-        typeof i.name === "string" &&
-        Number.isFinite(i.qty) &&
-        Number.isFinite(i.price) &&
-        typeof i.category === "string"
-      )
-    )) {
-      throw Error("Ungültige Sicherungsdatei");
-    }
-
-    const ids = new Set(receipts.map(r => r.id));
-    const added = incoming.filter(r => !ids.has(r.id));
-
-    const before = receipts;
-    receipts = [...receipts, ...added];
-
-    if (!save()) {
-      receipts = before;
-    } else {
-      alert(added.length + " Bons importiert.");
-    }
-
-    render();
-  } catch (error) {
-    alert("Import nicht möglich: " + error.message);
-  }
-
-  event.target.value = "";
-};
-
-// ---------------------------------------------------
-// START
-// ---------------------------------------------------
-
-reset();
-render();
-
-if ("serviceWorker" in navigator &&
-    location.protocol.startsWith("http")) {
-  navigator.serviceWorker.register("./sw.js").catch(error => {
-    console.warn("Service Worker:", error);
-  });
-}
-</script>
-</body>
-</html>
+reset();render();if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script></body></html>
